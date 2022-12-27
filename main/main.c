@@ -15,6 +15,8 @@ void app_main(void)
 
     UARTAppInit();
 
+    playerInit();
+
     for (;;)
     {
         gpio_set_level(13, 1);

@@ -1,5 +1,5 @@
-#ifndef MAINAPP_H
-#define	MAINAPP_H
+#ifndef PLAYERAPP_H
+#define	PLAYERAPP_H
 
 #include <stdio.h>
 #include <string.h>
@@ -12,7 +12,8 @@
 #include "esp_check.h"
 #include "uart_app.h"
 #include "emulator_app.h"
-#include "player_app.h"
 #include "spdif.h"
 
-#endif	/* MAINAPP_H */ 
+void playerInit(void);
+
+#endif	/* PLAYERAPP_H */ 
