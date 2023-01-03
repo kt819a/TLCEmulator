@@ -4,6 +4,7 @@ SemaphoreHandle_t xHUAckSemaphore;
 SemaphoreHandle_t xUARTSenderMutex;
 QueueHandle_t xHUMessageQueue;
 QueueHandle_t xCDCMessageQueue;
+TimerHandle_t xTimerPlayStatus;
 HUMessageDecodingStage_t currentDecodeStage = DECODER_WAIT_HEADER;
 uint8_t indexOfDecodedData, crc;
 HUMessage_t decodedMessage;
@@ -14,7 +15,7 @@ TrayState_t trayState;
 CDBitmap_t CDBitmap;
 uint8_t CDNumber;
 uint8_t randomStatus;
-uint8_t totalTrackNumber;
+uint8_t totalTrackNumber = 99;
 uint8_t indexOfCurrentTrack;
 
 
@@ -104,15 +105,15 @@ case EMULATOR_CDC_RANDOM_STATUS:
         msg->framePayloadData[0] = totalTrackNumber;
         msg->framePayloadData[1] = 0x01;
         msg->framePayloadData[2] = 0x00;
-        msg->framePayloadData[3] = 0x01;
-        msg->framePayloadData[4] = 0x01;
-        msg->framePayloadData[5] = 0x01;
+        msg->framePayloadData[3] = 0x43;
+        msg->framePayloadData[4] = 0x49;
+        msg->framePayloadData[5] = 0x55;
         return 0;
         break; 
         case EMULATOR_CDC_PLAYING_STATUS:                   //todo: update later    
         msg->frameDataLength = 11;
         msg->framePayloadType = type;
-        msg->framePayloadData[0] = indexOfCurrentTrack;
+        msg->framePayloadData[0] = (indexOfCurrentTrack % 10) + ((indexOfCurrentTrack / 10) << 4);              //BCD format
         msg->framePayloadData[1] = 0x01;
         msg->framePayloadData[2] = 0x01;
         msg->framePayloadData[3] = 0x13;
@@ -138,7 +139,6 @@ void convertCDCMessageToDataArray(CDCMessage_t *msg, uint8_t *data, uint8_t *len
     crc ^= data[0];
     data[1] = frameID;
     crc ^= data[1];
-    frameID++;
     data[2] = msg->frameDataLength;
     crc ^= data[2];
     data[3] = msg -> framePayloadType;
@@ -177,6 +177,8 @@ static void emulatorProcessHUMessage_task(void *pvParameters)
             trayState = TRAY_STATE_CD_READY;
             if(emulatorInitCDCMessage(EMULATOR_CDC_CD_SUMMARY, &CDCmsg) == 0)
                 xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
+            if(emulatorInitCDCMessage(EMULATOR_CDC_STATUS, &CDCmsg) == 0)
+                xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
             break;
         case EMULATOR_HU_PLAY:
             CDState = CD_STATE_LOADING_TRACK;
@@ -205,7 +207,7 @@ static void emulatorProcessHUMessage_task(void *pvParameters)
                 xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
             break;
         case EMULATOR_HU_PREV:
-            if (indexOfCurrentTrack > 2)
+            if (indexOfCurrentTrack > 1)
                 indexOfCurrentTrack --;
             if(emulatorInitCDCMessage(EMULATOR_CDC_TRACK_CHANGE, &CDCmsg) == 0)
                 xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
@@ -230,6 +232,7 @@ static void emulatorProcessHUMessage_task(void *pvParameters)
                 xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
             break;
         case EMULATOR_HU_CDnn:
+            CDNumber = CDCmsg.framePayloadData[0];
             if(emulatorInitCDCMessage(EMULATOR_CDC_TRACK_CHANGE, &CDCmsg) == 0)
                 xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
             CDState = CD_STATE_PLAYING;
@@ -259,6 +262,11 @@ static void emulatorProcessHUMessage_task(void *pvParameters)
             if(emulatorInitCDCMessage(EMULATOR_CDC_CD_OPERATION, &CDCmsg) == 0)
                 xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
             break;
+        case EMULATOR_HU_START_BTN:
+            CDState = CD_STATE_PLAYING;
+            if(emulatorInitCDCMessage(EMULATOR_CDC_CD_OPERATION, &CDCmsg) == 0)
+                xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
+            break;
         case EMULATOR_HU_PAUSE:
             CDState = CD_STATE_PAUSED;
             if(emulatorInitCDCMessage(EMULATOR_CDC_CD_OPERATION, &CDCmsg) == 0)
@@ -267,6 +275,7 @@ static void emulatorProcessHUMessage_task(void *pvParameters)
         case EMULATOR_HU_CHECK:
             CDState = CD_STATE_NO_CD_LOADED;
             trayState = TRAY_STATE_CD_READY;
+
             if(emulatorInitCDCMessage(EMULATOR_CDC_STATUS, &CDCmsg) == 0)
                 xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
             if(emulatorInitCDCMessage(EMULATOR_CDC_RANDOM_STATUS, &CDCmsg) == 0)
@@ -296,12 +305,17 @@ static void emulatorSendMessageToHU_task(void *pvParameters)
             UARTAppSendData(data, length);
             xSemaphoreGive(xUARTSenderMutex);
             ESP_LOGI("emulator app", "send msg to HU. Type %d", msg.framePayloadType);
-        } while (xSemaphoreTake(xHUAckSemaphore, (100 / portTICK_PERIOD_MS)) != pdTRUE);
+        } while (xSemaphoreTake(xHUAckSemaphore, (500 / portTICK_PERIOD_MS)) != pdTRUE);
     }
     vTaskDelete(NULL);
 }
 
-
+void vTimerPlayStatusCallback( TimerHandle_t pxTimer )
+{
+    CDCMessage_t CDCmsg;
+    if(emulatorInitCDCMessage(EMULATOR_CDC_BOOT_OK, &CDCmsg) == 0)
+            xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
+}
 
 void emulatorAppInit(void)
 {
@@ -315,23 +329,34 @@ void emulatorAppInit(void)
 
     //init sequence
     CDCMessage_t msg;
+    CDBitmap.cd1 = 1;
+    CDBitmap.cd2 = 1;
     randomStatus = 0;
     if(emulatorInitCDCMessage(EMULATOR_CDC_BOOTING, &msg) == 0)
     {
-        xQueueSend(xCDCMessageQueue, &msg, 0);
         xQueueSend(xCDCMessageQueue, &msg, 0);
     }
     if(emulatorInitCDCMessage(EMULATOR_CDC_BOOT_OK, &msg) == 0)
     {
         xQueueSend(xCDCMessageQueue, &msg, 0);
     }
-    CDState = CD_STATE_NO_CD_LOADED;
+    CDState = CD_STATE_PLAYING;
     trayState = TRAY_STATE_CD_READY;
     CDNumber = 1;
+    indexOfCurrentTrack = 1;
     if(emulatorInitCDCMessage(EMULATOR_CDC_STATUS, &msg) == 0)
     {
         xQueueSend(xCDCMessageQueue, &msg, 0);
     }
+
+    xTimerPlayStatus = xTimerCreate("TimerPlayStatus",          // Name, not used by the kernel.
+                                    (500 / portTICK_PERIOD_MS), // The timer period in ticks.
+                                    pdTRUE,                     // The timers will auto-reload themselves when they expire.
+                                    ( void * ) 1,               // Assign each timer a unique id.
+                                    vTimerPlayStatusCallback    // Timer calls when it expires.
+                                    );
+
+    xTimerStart(xTimerPlayStatus, 0);
 }
 
 void emulatorDecodeHUMsg(uint8_t data)
@@ -340,6 +365,11 @@ void emulatorDecodeHUMsg(uint8_t data)
 
     if (data == ACK_BYTE) // receive ACK
     {
+        frameID++;
+        gpio_set_level(12, 1);
+        vTaskDelay(2 / portTICK_PERIOD_MS);
+        gpio_set_level(12, 0);
+        ESP_LOGI("emulator app", "GET ACK.");
         xSemaphoreGive(xHUAckSemaphore);
         return;
     }
@@ -395,9 +425,13 @@ void emulatorDecodeHUMsg(uint8_t data)
             xSemaphoreTake(xUARTSenderMutex,(TickType_t)portMAX_DELAY);
             uint8_t ackData = EMULATOR_CDC_ACK;
             UARTAppSendData(&ackData, 1);
+            ESP_LOGI("emulator app", "Decoded new message.");
+            ESP_LOGI("emulator app", "SEND ACK.");
+            gpio_set_level(13, 1);
+            vTaskDelay(2 / portTICK_PERIOD_MS);
+            gpio_set_level(13, 0);
             xSemaphoreGive(xUARTSenderMutex);
             xQueueSend(xHUMessageQueue, &decodedMessage, ( TickType_t ) 0);
-            ESP_LOGI("emulator app", "Decoded new message.");
         }
         currentDecodeStage = DECODER_WAIT_HEADER;
         break;

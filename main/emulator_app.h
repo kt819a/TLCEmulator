@@ -5,6 +5,7 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/timers.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
 #include "esp_log.h"   
@@ -35,7 +36,8 @@ typedef enum
     EMULATOR_HU_RANDOM   = 0x27,
     EMULATOR_HU_STOP     = 0x19,
     EMULATOR_HU_PAUSE    = 0x1C,
-    EMULATOR_HU_CHECK    = 0x94 
+    EMULATOR_HU_CHECK    = 0x94,
+    EMULATOR_HU_START_BTN= 0x24 
 } HUPayloadType_t;
 
 /*CDC CMD*/
@@ -94,14 +96,14 @@ typedef union
 {
     struct 
     {
-        unsigned cd1:1;
-        unsigned cd2:1;
-        unsigned cd3:1;
-        unsigned cd4:1;
-        unsigned cd5:1;
+        unsigned NU1:1;
+        unsigned NU2:1;
         unsigned cd6:1;
-        unsigned cd7:1;
-        unsigned cd8:1;
+        unsigned cd5:1;
+        unsigned cd4:1;
+        unsigned cd3:1;
+        unsigned cd2:1;
+        unsigned cd1:1;
     };
     uint8_t data;
     /* data */
