@@ -55,5 +55,5 @@ void playerInit(void)
     spdif_init(48000);
 
     xTaskCreate(i2sSend_task, "I2SSend", 2048, NULL, configMAX_PRIORITIES - 3, NULL);
-    xTaskCreate(i2sTestGenerator_task, "I2STest", 2048, NULL, configMAX_PRIORITIES - 2, NULL);
+    xTaskCreate(i2sTestGenerator_task, "I2STest", 4096, NULL, configMAX_PRIORITIES - 2, NULL);
 }

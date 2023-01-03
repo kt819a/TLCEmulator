@@ -2,7 +2,6 @@
 
 static const char *TAG = "uart_events";
 
-#define EX_UART_NUM UART_NUM_1
 #define PATTERN_CHR_NUM    (1)         /*!< Set the number of consecutive and identical characters received by receiver which defines a UART pattern*/
 
 #define BUF_SIZE (200)
@@ -19,7 +18,7 @@ static void uart_event_task(void *pvParameters)
             bzero(dtmp, RD_BUF_SIZE);
             switch(event.type) {
                 case UART_DATA:
-                    uart_read_bytes(EX_UART_NUM, dtmp, event.size, portMAX_DELAY);
+                    uart_read_bytes(CDC_UART_NUM, dtmp, event.size, portMAX_DELAY);
                     for (int i = 0; i < event.size; i++)
                     {
                         emulatorDecodeHUMsg(dtmp[i]);
@@ -28,13 +27,13 @@ static void uart_event_task(void *pvParameters)
                 //Event of HW FIFO overflow detected
                 case UART_FIFO_OVF:
                     ESP_LOGI(TAG, "hw fifo overflow");
-                    uart_flush_input(EX_UART_NUM);
+                    uart_flush_input(CDC_UART_NUM);
                     xQueueReset(uart0_queue);
                     break;
                 //Event of UART ring buffer full
                 case UART_BUFFER_FULL:
                     ESP_LOGI(TAG, "ring buffer full");
-                    uart_flush_input(EX_UART_NUM);
+                    uart_flush_input(CDC_UART_NUM);
                     xQueueReset(uart0_queue);
                     break;
                 //Event of UART RX break detected
@@ -72,14 +71,14 @@ void UARTAppInit(void)
             .source_clk = UART_SCLK_DEFAULT,
         };
 
-    ESP_ERROR_CHECK(uart_param_config(UART_NUM_1, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, GPIO_NUM_0, GPIO_NUM_1, GPIO_NUM_NC, GPIO_NUM_NC));
+    ESP_ERROR_CHECK(uart_param_config(CDC_UART_NUM, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(CDC_UART_NUM, CDC_UART_PIN_TX, CDC_UART_PIN_RX, GPIO_NUM_NC, GPIO_NUM_NC));
 
     // Install UART driver using an event queue here
-    ESP_ERROR_CHECK(uart_driver_install(EX_UART_NUM, BUF_SIZE * 2, BUF_SIZE * 2, 20, &uart0_queue, 0));
+    ESP_ERROR_CHECK(uart_driver_install(CDC_UART_NUM, BUF_SIZE * 2, BUF_SIZE * 2, 20, &uart0_queue, 0));
 
     //Reset the pattern queue length to record at most 20 pattern positions.
-    uart_pattern_queue_reset(EX_UART_NUM, 20);
+    uart_pattern_queue_reset(CDC_UART_NUM, 20);
 
     //Create a task to handler UART event from ISR
     xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 12, NULL);
@@ -90,10 +89,10 @@ void UARTAppInit(void)
 void UARTAppSendTestData(void)
 {
     char data[] = {ACK_BYTE, FRAME_START_BYTE, 0, 3, EMULATOR_CDC_BOOTING, 0x60, 0x06, 0x49};
-    uart_write_bytes(EX_UART_NUM, (const char*)&data, 8);
+    uart_write_bytes(CDC_UART_NUM, (const char*)&data, 8);
 }
 
 void UARTAppSendData(uint8_t *data, uint8_t length)
 {
-    uart_write_bytes(EX_UART_NUM, data, length);
+    uart_write_bytes(CDC_UART_NUM, data, length);
 }

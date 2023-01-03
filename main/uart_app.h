@@ -12,6 +12,7 @@
 #include "esp_check.h"
 #include "uart_app.h"
 #include "emulator_app.h"
+#include "boarddef.h"
 
 void UARTAppInit(void);
 void UARTAppSendTestData(void);

@@ -366,9 +366,6 @@ void emulatorDecodeHUMsg(uint8_t data)
     if (data == ACK_BYTE) // receive ACK
     {
         frameID++;
-        gpio_set_level(12, 1);
-        vTaskDelay(2 / portTICK_PERIOD_MS);
-        gpio_set_level(12, 0);
         ESP_LOGI("emulator app", "GET ACK.");
         xSemaphoreGive(xHUAckSemaphore);
         return;
@@ -427,9 +424,6 @@ void emulatorDecodeHUMsg(uint8_t data)
             UARTAppSendData(&ackData, 1);
             ESP_LOGI("emulator app", "Decoded new message.");
             ESP_LOGI("emulator app", "SEND ACK.");
-            gpio_set_level(13, 1);
-            vTaskDelay(2 / portTICK_PERIOD_MS);
-            gpio_set_level(13, 0);
             xSemaphoreGive(xUARTSenderMutex);
             xQueueSend(xHUMessageQueue, &decodedMessage, ( TickType_t ) 0);
         }

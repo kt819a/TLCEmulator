@@ -10,13 +10,9 @@
 
 #include "driver/i2s_std.h"
 #include "driver/gpio.h"
+#include "boarddef.h"
 
 i2s_chan_handle_t tx_handle;
-
-#define SPDIF_DATA_PIN		6
-
-
-#define I2S_NUM			(0)
 
 #define I2S_BITS_PER_SAMPLE	(32)
 #define I2S_CHANNELS		2
@@ -95,8 +91,6 @@ static void spdif_buf_init(void)
 void spdif_init(int rate)
 {
     int sample_rate = rate * BMC_BITS_FACTOR;
-    int bclk = sample_rate * I2S_BITS_PER_SAMPLE * I2S_CHANNELS;
-    int mclk = (I2S_BUG_MAGIC / bclk) * bclk; // use mclk for avoiding I2S bug
 
     i2s_chan_config_t chan_cfg = {
         .id = I2S_NUM,
@@ -122,7 +116,7 @@ void spdif_init(int rate)
             .mclk = I2S_GPIO_UNUSED,
             .bclk = I2S_GPIO_UNUSED,
             .ws = I2S_GPIO_UNUSED,
-            .dout = GPIO_NUM_6,
+            .dout = SPDIF_PIN,
             .din = I2S_GPIO_UNUSED,
             .invert_flags = {
                 .mclk_inv = false,

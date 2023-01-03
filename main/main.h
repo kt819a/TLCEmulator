@@ -14,5 +14,6 @@
 #include "emulator_app.h"
 #include "player_app.h"
 #include "spdif.h"
+#include "boarddef.h"
 
 #endif	/* MAINAPP_H */ 
