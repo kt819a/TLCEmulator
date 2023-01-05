@@ -15,5 +15,6 @@
 #include "spdif.h"
 
 void playerInit(void);
+void write_ringbuf(const uint8_t *data, size_t size);
 
 #endif	/* PLAYERAPP_H */ 

@@ -12,6 +12,8 @@ void app_main(void)
 
     playerInit();
 
+    bluetoothInit();
+
     for (;;)
     {
         gpio_set_level(LED, 1);

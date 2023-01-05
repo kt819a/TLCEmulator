@@ -3,6 +3,7 @@
 #define TAG "Player"
 
 #define I2S_RINGBUF_SIZE (16 * 1024)
+#define AUDIO_SAMPLE_SIZE (16 * 2 / 8) // 16bit, 2ch, 8bit/byte 
 
 static RingbufHandle_t s_ringbuf_i2s = NULL;
 
@@ -52,8 +53,22 @@ void playerInit(void)
         return;
     }
 
-    spdif_init(48000);
+    spdif_init(44100);
 
     xTaskCreate(i2sSend_task, "I2SSend", 2048, NULL, configMAX_PRIORITIES - 3, NULL);
-    xTaskCreate(i2sTestGenerator_task, "I2STest", 4096, NULL, configMAX_PRIORITIES - 2, NULL);
+    //xTaskCreate(i2sTestGenerator_task, "I2STest", 4096, NULL, configMAX_PRIORITIES - 2, NULL);
+}
+
+void write_ringbuf(const uint8_t *data, size_t size)
+{
+    // rate control
+    UBaseType_t items;
+    vRingbufferGetInfo(s_ringbuf_i2s, NULL, NULL, NULL, NULL, &items);
+    if (items < I2S_RINGBUF_SIZE * 3 / 8) {
+        xRingbufferSend(s_ringbuf_i2s, (void *)data, AUDIO_SAMPLE_SIZE, (TickType_t)portMAX_DELAY);
+    } else if (items > I2S_RINGBUF_SIZE * 5 / 8) {
+        size -= AUDIO_SAMPLE_SIZE;
+    }
+
+    xRingbufferSend(s_ringbuf_i2s, (void *)data, size, (TickType_t)portMAX_DELAY);
 }

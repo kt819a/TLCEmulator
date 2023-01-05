@@ -15,5 +15,6 @@
 #include "player_app.h"
 #include "spdif.h"
 #include "boarddef.h"
+#include "bt_app.h"
 
 #endif	/* MAINAPP_H */ 
