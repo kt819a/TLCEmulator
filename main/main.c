@@ -10,6 +10,8 @@ void app_main(void)
 
     UARTAppInit();
 
+    emulatorAppInit();
+
     playerInit();
 
     bluetoothInit();

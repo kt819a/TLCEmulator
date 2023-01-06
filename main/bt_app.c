@@ -57,14 +57,14 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
         char *dev_name = "TLCDEmulator";
         esp_bt_dev_set_device_name(dev_name);
 
+        /* initialize AVRCP controller */
+        esp_avrc_ct_init();
+        esp_avrc_ct_register_callback(bt_app_rc_ct_cb);
+
         /* initialize A2DP sink */
         esp_a2d_register_callback(&bt_app_a2d_cb);
         esp_a2d_sink_register_data_callback(bt_app_a2d_data_cb);
         esp_a2d_sink_init();
-
-        /* initialize AVRCP controller */
-        esp_avrc_ct_init();
-        esp_avrc_ct_register_callback(bt_app_rc_ct_cb);
 
         /* set discoverable and connectable mode, wait to be connected */
         esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
@@ -76,3 +76,32 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
     }
 }
 
+void bt_avrc_send_cmd(uint8_t cmd)
+{
+    switch (cmd)
+    {
+    case BT_APP_CMD_PLAY: {
+        bt_avrc_play();
+        break;
+    }
+    case BT_APP_CMD_PAUSE: {
+        bt_avrc_pause();
+        break;
+    }
+    case BT_APP_CMD_STOP: {
+        bt_avrc_stop();
+        break;
+    }
+    case BT_APP_CMD_NEXT: {
+        bt_avrc_next();
+        break;
+    }
+    case BT_APP_CMD_PREV: {
+        bt_avrc_prev();
+        break;
+    }
+    
+    default:
+        break;
+    }
+}

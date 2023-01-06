@@ -12,6 +12,7 @@
 #include "esp_err.h"
 #include "esp_check.h"
 #include "uart_app.h"
+#include "player_app.h"
 
 #define ACK_BYTE 0xC5
 #define FRAME_START_BYTE 0x3D

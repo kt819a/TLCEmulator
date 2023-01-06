@@ -44,5 +44,10 @@ void get_last_connection();
 void set_last_connection(esp_bd_addr_t bda);
 
 void bt_av_init(void);
+void bt_avrc_play();
+void bt_avrc_stop();
+void bt_avrc_pause();
+void bt_avrc_next();
+void bt_avrc_prev();
 
 #endif /* __BT_APP_AV_H__*/

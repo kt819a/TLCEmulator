@@ -21,8 +21,18 @@
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
 
-#define READY_TIMEOUT (10 * 1000)
+#define BTC_AV_SBC_DEFAULT_SAMP_FREQ A2D_SBC_IE_SAMP_FREQ_48
+
+typedef enum {
+    BT_APP_CMD_PLAY = 0,
+    BT_APP_CMD_PAUSE,
+    BT_APP_CMD_STOP,
+    BT_APP_CMD_NEXT,
+    BT_APP_CMD_PREV
+} bt_app_avrc_cmd_t;
 
 void bluetoothInit(void);
+
+void bt_avrc_send_cmd(uint8_t cmd);
 
 #endif	/* BLUETOOTHAPP_H */ 

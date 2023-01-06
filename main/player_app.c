@@ -72,3 +72,8 @@ void write_ringbuf(const uint8_t *data, size_t size)
 
     xRingbufferSend(s_ringbuf_i2s, (void *)data, size, (TickType_t)portMAX_DELAY);
 }
+
+void player_send_cmd(uint8_t cmd)
+{
+    bt_avrc_send_cmd(cmd);
+}

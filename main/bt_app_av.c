@@ -84,6 +84,7 @@ void bt_app_rc_ct_cb(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param
 {
     switch (event) {
     case ESP_AVRC_CT_CONNECTION_STATE_EVT:
+    case ESP_AVRC_CT_PLAY_STATUS_RSP_EVT:
     case ESP_AVRC_CT_PASSTHROUGH_RSP_EVT: {
         bt_app_work_dispatch(bt_av_hdl_avrc_evt, event, param, sizeof(esp_avrc_ct_cb_param_t), NULL);
         break;
@@ -102,7 +103,7 @@ static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
     case ESP_A2D_CONNECTION_STATE_EVT: {
         a2d = (esp_a2d_cb_param_t *)(p_param);
         uint8_t *bda = a2d->conn_stat.remote_bda;
-        ESP_LOGI(BT_AV_TAG, "avrc conn_state evt: state %d, feature 0x%x, [%02x:%02x:%02x:%02x:%02x:%02x]",
+        ESP_LOGI(BT_AV_TAG, "a2dp conn_state evt: state %d, feature 0x%x, [%02x:%02x:%02x:%02x:%02x:%02x]",
                            a2d->conn_stat.state, a2d->conn_stat.disc_rsn, bda[0], bda[1], bda[2], bda[3], bda[4], bda[5]);
         if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_CONNECTED)
         {
@@ -172,8 +173,11 @@ static void bt_av_hdl_avrc_evt(uint16_t event, void *p_param)
     switch (event) {
     case ESP_AVRC_CT_CONNECTION_STATE_EVT: {
         uint8_t *bda = rc->conn_stat.remote_bda;
-        ESP_LOGI(BT_AV_TAG, "avrc conn_state evt: state %d, feature 0x%x, [%02x:%02x:%02x:%02x:%02x:%02x]",
-                           rc->conn_stat.connected, rc->conn_stat.connected, bda[0], bda[1], bda[2], bda[3], bda[4], bda[5]);
+        ESP_LOGI(BT_AV_TAG, "avrc conn_state evt: state %d, [%02x:%02x:%02x:%02x:%02x:%02x]",
+                           rc->conn_stat.connected, bda[0], bda[1], bda[2], bda[3], bda[4], bda[5]);
+
+        if (rc->conn_stat.connected == 1)
+            bt_avrc_play();
         break;
     }
     case ESP_AVRC_CT_PASSTHROUGH_RSP_EVT: {
@@ -266,4 +270,39 @@ void bt_av_init(void)
                                     vTimerAutoConnet            // Timer calls when it expires.
                                     );
     
+}
+
+void execute_avrc_command(int cmd){
+    ESP_LOGD(BT_AV_TAG, "execute_avrc_command: %d",cmd);    
+    esp_err_t ok = esp_avrc_ct_send_passthrough_cmd(0, cmd, ESP_AVRC_PT_CMD_STATE_PRESSED);
+    if (ok==ESP_OK){
+        ok = esp_avrc_ct_send_passthrough_cmd(0, cmd, ESP_AVRC_PT_CMD_STATE_RELEASED);
+        if (ok==ESP_OK){
+            ESP_LOGD(BT_AV_TAG, "execute_avrc_command: %d -> OK", cmd);    
+        } else {
+            ESP_LOGE(BT_AV_TAG,"execute_avrc_command ESP_AVRC_PT_CMD_STATE_PRESSED FAILED: %d",ok);
+        }
+    } else {
+        ESP_LOGE(BT_AV_TAG,"execute_avrc_command ESP_AVRC_PT_CMD_STATE_RELEASED FAILED: %d",ok);
+    }
+}
+
+void bt_avrc_play(){
+    execute_avrc_command(ESP_AVRC_PT_CMD_PLAY);
+}
+
+void bt_avrc_pause(){
+    execute_avrc_command(ESP_AVRC_PT_CMD_STOP);
+}
+
+void bt_avrc_stop(){
+    execute_avrc_command(ESP_AVRC_PT_CMD_PAUSE);
+}
+
+void bt_avrc_next(){
+    execute_avrc_command(ESP_AVRC_PT_CMD_FORWARD);
+}
+
+void bt_avrc_prev(){
+    execute_avrc_command(ESP_AVRC_PT_CMD_BACKWARD);
 }

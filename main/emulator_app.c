@@ -181,6 +181,7 @@ static void emulatorProcessHUMessage_task(void *pvParameters)
                 xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
             break;
         case EMULATOR_HU_PLAY:
+            player_send_cmd(PLAYER_APP_CMD_PLAY);
             CDState = CD_STATE_LOADING_TRACK;
             trayState = TRAY_STATE_CD_READY;
             if(emulatorInitCDCMessage(EMULATOR_CDC_CD_OPERATION, &CDCmsg) == 0)
@@ -196,6 +197,7 @@ static void emulatorProcessHUMessage_task(void *pvParameters)
                 xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
             break;
         case EMULATOR_HU_NEXT:
+            player_send_cmd(PLAYER_APP_CMD_NEXT);
             if (indexOfCurrentTrack < 99)
                 indexOfCurrentTrack ++;
             if(emulatorInitCDCMessage(EMULATOR_CDC_TRACK_CHANGE, &CDCmsg) == 0)
@@ -207,6 +209,7 @@ static void emulatorProcessHUMessage_task(void *pvParameters)
                 xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
             break;
         case EMULATOR_HU_PREV:
+            player_send_cmd(PLAYER_APP_CMD_PREV);
             if (indexOfCurrentTrack > 1)
                 indexOfCurrentTrack --;
             if(emulatorInitCDCMessage(EMULATOR_CDC_TRACK_CHANGE, &CDCmsg) == 0)
@@ -259,16 +262,19 @@ static void emulatorProcessHUMessage_task(void *pvParameters)
             break;
         case EMULATOR_HU_STOP:
             CDState = CD_STATE_CD_READY;
+            player_send_cmd(PLAYER_APP_CMD_STOP);
             if(emulatorInitCDCMessage(EMULATOR_CDC_CD_OPERATION, &CDCmsg) == 0)
                 xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
             break;
         case EMULATOR_HU_START_BTN:
             CDState = CD_STATE_PLAYING;
+            player_send_cmd(PLAYER_APP_CMD_PLAY);
             if(emulatorInitCDCMessage(EMULATOR_CDC_CD_OPERATION, &CDCmsg) == 0)
                 xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
             break;
         case EMULATOR_HU_PAUSE:
             CDState = CD_STATE_PAUSED;
+            player_send_cmd(PLAYER_APP_CMD_PAUSE);
             if(emulatorInitCDCMessage(EMULATOR_CDC_CD_OPERATION, &CDCmsg) == 0)
                 xQueueSend(xCDCMessageQueue, &CDCmsg, 0);
             break;
