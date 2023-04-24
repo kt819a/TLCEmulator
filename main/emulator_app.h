@@ -118,5 +118,6 @@ typedef struct {
 
 void emulatorAppInit(void);
 void emulatorDecodeHUMsg(uint8_t data);
+void emulatorDetectCDCMode();
 
 #endif	/* EMUALTORAPP_H */ 

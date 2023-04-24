@@ -16,5 +16,6 @@
 #include "spdif.h"
 #include "boarddef.h"
 #include "bt_app.h"
+#include "display_app.h"
 
 #endif	/* MAINAPP_H */ 

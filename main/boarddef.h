@@ -23,4 +23,13 @@
 #define I2S_NUM I2S_NUM_0
 #define SPDIF_PIN GPIO_NUM_12
 
+/* I2C display*/
+
+#define I2C_NUM 0
+#define I2C_DISPLAY_SPEED 10000
+#define DISPLAY_SDA GPIO_NUM_33
+#define DISPLAY_SCK GPIO_NUM_25
+#define DISPLAY_MRQ GPIO_NUM_32
+#define DISPLAY_ADDRESS 0x23
+
 #endif	/* BOARDDEF_H */ 

@@ -292,7 +292,7 @@ static void emulatorProcessHUMessage_task(void *pvParameters)
         default:
             break;
         }
-        ESP_LOGI("emulator app", "process HU message. Type: %d", HUmsg.framePayloadType);
+        //ESP_LOGI("emulator app", "process HU message. Type: %d", HUmsg.framePayloadType);
     }
     vTaskDelete(NULL);
 }
@@ -310,7 +310,7 @@ static void emulatorSendMessageToHU_task(void *pvParameters)
             xSemaphoreTake(xUARTSenderMutex,(TickType_t)portMAX_DELAY);
             UARTAppSendData(data, length);
             xSemaphoreGive(xUARTSenderMutex);
-            ESP_LOGI("emulator app", "send msg to HU. Type %d", msg.framePayloadType);
+            //ESP_LOGI("emulator app", "send msg to HU. Type %d", msg.framePayloadType);
         } while (xSemaphoreTake(xHUAckSemaphore, (500 / portTICK_PERIOD_MS)) != pdTRUE);
     }
     vTaskDelete(NULL);
@@ -372,7 +372,7 @@ void emulatorDecodeHUMsg(uint8_t data)
     if (data == ACK_BYTE) // receive ACK
     {
         frameID++;
-        ESP_LOGI("emulator app", "GET ACK.");
+        //ESP_LOGI("emulator app", "GET ACK.");
         xSemaphoreGive(xHUAckSemaphore);
         return;
     }
@@ -428,8 +428,8 @@ void emulatorDecodeHUMsg(uint8_t data)
             xSemaphoreTake(xUARTSenderMutex,(TickType_t)portMAX_DELAY);
             uint8_t ackData = EMULATOR_CDC_ACK;
             UARTAppSendData(&ackData, 1);
-            ESP_LOGI("emulator app", "Decoded new message.");
-            ESP_LOGI("emulator app", "SEND ACK.");
+            //ESP_LOGI("emulator app", "Decoded new message.");
+            //ESP_LOGI("emulator app", "SEND ACK.");
             xSemaphoreGive(xUARTSenderMutex);
             xQueueSend(xHUMessageQueue, &decodedMessage, ( TickType_t ) 0);
         }
@@ -439,4 +439,9 @@ void emulatorDecodeHUMsg(uint8_t data)
         currentDecodeStage = DECODER_WAIT_HEADER;
         break;
     }
+}
+
+void emulatorDetectCDCMode()
+{
+    CDState = CD_STATE_PLAYING;
 }
