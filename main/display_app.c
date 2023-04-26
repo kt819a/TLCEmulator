@@ -117,7 +117,7 @@ void i2c_sendTextToDiasplay(uint8_t* message)
     gpio_set_level(DISPLAY_MRQ,0);
     ets_delay_us(50);
     i2c_soft_start();
-    ets_delay_us(20000);
+    ets_delay_us(10);
     i2c_soft_sendByte((0x23 << 1));
     i2c_soft_sendByte((0x0F));
     i2c_soft_sendByte((0x90));
@@ -144,8 +144,6 @@ static void i2cSenderTask(void *arg)
     uint8_t currentPosition = 0;
     strcpy(displayText,defaultText);
 
-    ESP_LOGI("DISPLAY:", "Display Msg len = %d", strlen(displayText));
-
     if (strlen(displayText) > 8)
     {
         uint8_t len = strlen(displayText);
@@ -155,11 +153,9 @@ static void i2cSenderTask(void *arg)
         displayText[len + 3] = 0;
     }
 
-    ESP_LOGI("DISPLAY:", "Display Msg len = %d", strlen(displayText));
-
     for(;;)
     {
-        xSemaphoreTake(xDisplayUpdateSemaphore, 777 / portTICK_PERIOD_MS);
+        xSemaphoreTake(xDisplayUpdateSemaphore, 400 / portTICK_PERIOD_MS);
         xSemaphoreTake(xDisplayDisableUpdateMutex, (TickType_t) portMAX_DELAY);
         disableDisplayGPIOInterrupt();
 
@@ -212,10 +208,13 @@ static void i2cSnifferTask(void *arg)
                 case (DISPLAY_MRQ) :
                 {//end data transfer
                     {
-                        ESP_LOGI("Data:", "Byte count = %d(%d), data %02x %c %c ", byteCount, currentPack[1], currentPack[0],currentPack[6],currentPack[7]);
-                        if (byteCount >= 10) 
+                        //ESP_LOGI("Data:", "Byte count = %d(%d), data %02x %c %c ", byteCount, currentPack[1], currentPack[0],currentPack[6],currentPack[7]);
+                        if (byteCount >= 14) 
                             {
-                                if (((currentPack[9] == 'b') && (currentPack[10] == 'a')) || ((currentPack[9] == 't') && (currentPack[10] == 'r')) || ((currentPack[6] == 'T') && (currentPack[7] == 'R'))) 
+                                ESP_LOGI("Data:", "Byte count = %d(%d), data %02x %c %c ", byteCount, currentPack[1], currentPack[0],currentPack[6],currentPack[7]);
+                                for (int i = 0; i < currentPack[1]; i++)
+                                    ESP_LOGI("Data:", "Byte[%d] : %c ", i, currentPack[i + 2]);
+                                if (((currentPack[9] == 'b') && (currentPack[10] == 'a')) || ((currentPack[9] == 't') && (currentPack[10] == 'r')) || ((currentPack[4] == 'q') && (currentPack[6] == 'T') && (currentPack[7] == 'R'))) 
                                     {
                                         ESP_LOGI("Data:", "Search replaciable message!");
                                         xSemaphoreGive(xDisplayDisableUpdateMutex);
@@ -235,6 +234,8 @@ static void i2cSnifferTask(void *arg)
                         bitCount = 0;
                         byteCount = 0;
                         currentDataByte = 0;
+                        for (int i = 0; i < 20 ; i++)
+                            currentPack[i] = 0;
                     }    
                 } break;
                 case (DISPLAY_SCK):
@@ -267,5 +268,5 @@ void displayAppInit(void)
     xSemaphoreGive(xDisplayDisableUpdateMutex);
 
     xTaskCreatePinnedToCore(i2cSnifferTask, "snifferTask", 2048, NULL, configMAX_PRIORITIES, NULL, 1);
-    xTaskCreatePinnedToCore(i2cSenderTask, "senderTask", 2048, NULL, configMAX_PRIORITIES - 1, NULL, 1);
+    xTaskCreatePinnedToCore(i2cSenderTask, "senderTask", 2048, NULL, configMAX_PRIORITIES - 6, NULL, 1);
 }
