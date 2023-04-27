@@ -39,6 +39,8 @@ void bt_app_a2d_data_cb(const uint8_t *data, uint32_t len);
  */
 void bt_app_rc_ct_cb(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param);
 
+void bt_av_new_track();
+
 bool has_last_connection();
 void get_last_connection();
 void set_last_connection(esp_bd_addr_t bda);

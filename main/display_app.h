@@ -2,11 +2,13 @@
 #define	DISPLAYAPP_H
 
 #include <stdio.h>
+#include <ctype.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
 #include "driver/i2c.h"
+#include "driver/dac.h"
 #include "esp_log.h"   
 #include "esp_err.h"
 #include "esp_check.h"
@@ -20,5 +22,6 @@ typedef struct {
 } DISPLAYINTERFACEPINSTATE_t;
 
 void displayAppInit(void);
+void updateDisplayText(char *msg);
 
 #endif	/* DISPLAYAPP_H */ 

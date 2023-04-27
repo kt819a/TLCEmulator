@@ -29,6 +29,7 @@
 #include "esp_gap_bt_api.h"
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
+#include "display_app.h"
 
 TimerHandle_t xTimerAutoConnect;
 uint16_t autoConnectRetryCount;
@@ -37,11 +38,31 @@ bool autoConnectIsAvaliable;
 esp_bd_addr_t last_connection = {0,0,0,0,0,0};
 const char* last_bda_nvs_name = "src_bda";
 
+char track_artist[80];
+char track_title[80];
+
 /* a2dp event handler */
 static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param);
 /* avrc event handler */
 static void bt_av_hdl_avrc_evt(uint16_t event, void *p_param);
 
+void clear_track_metadata_string()
+{
+    for(int i = 0; i < 80; i++)
+    {
+        track_artist[i] = 0;
+        track_title[i] = 0;
+    }
+}
+void update_track_metadata_string()
+{
+    char displayText[200];
+    strcpy(displayText,track_artist);
+    strcat(displayText," - ");
+    strcat(displayText,track_title);
+    ESP_LOGI(BT_AV_TAG, "Text: %s", displayText);
+    updateDisplayText(displayText);
+}
 
 static uint32_t m_pkt_cnt = 0;
 static esp_a2d_audio_state_t m_audio_state = ESP_A2D_AUDIO_STATE_STOPPED;
@@ -52,6 +73,37 @@ void vTimerAutoConnet( TimerHandle_t pxTimer )
         esp_a2d_sink_connect(last_connection);
         ESP_LOGI(BT_AV_TAG, "%s start discovery. Wait...... count = %d", __func__, autoConnectRetryCount);
         autoConnectRetryCount++;
+    }
+}
+
+void bt_av_new_track(){
+    //Register notifications and request metadata
+
+    clear_track_metadata_string();
+
+    esp_avrc_ct_send_metadata_cmd(0, ESP_AVRC_MD_ATTR_TITLE | ESP_AVRC_MD_ATTR_ARTIST);
+    esp_avrc_ct_send_register_notification_cmd(1, ESP_AVRC_RN_TRACK_CHANGE, 0);
+    esp_avrc_ct_send_register_notification_cmd(1, ESP_AVRC_RN_PLAY_STATUS_CHANGE, 1);
+}
+
+void app_alloc_meta_buffer(esp_avrc_ct_cb_param_t *param)
+{
+    ESP_LOGD(BT_AV_TAG, "%s", __func__);
+    esp_avrc_ct_cb_param_t *rc = (esp_avrc_ct_cb_param_t *)(param);
+    uint8_t *attr_text = (uint8_t *) malloc (rc->meta_rsp.attr_length + 1);
+    memcpy(attr_text, rc->meta_rsp.attr_text, rc->meta_rsp.attr_length);
+    attr_text[rc->meta_rsp.attr_length] = 0;
+    ESP_LOGE(BT_AV_TAG, "meta text: %s. ID: %d", attr_text, rc->meta_rsp.attr_id);
+    rc->meta_rsp.attr_text = attr_text;
+
+    if (rc->meta_rsp.attr_id == ESP_AVRC_MD_ATTR_ARTIST)
+    {
+        strcpy(track_artist,(char *)attr_text);
+    }
+    if (rc->meta_rsp.attr_id == ESP_AVRC_MD_ATTR_TITLE)
+    {
+        strcpy(track_title,(char *)attr_text);
+        
     }
 }
 
@@ -85,12 +137,17 @@ void bt_app_rc_ct_cb(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param
     switch (event) {
     case ESP_AVRC_CT_CONNECTION_STATE_EVT:
     case ESP_AVRC_CT_PLAY_STATUS_RSP_EVT:
+    case ESP_AVRC_CT_CHANGE_NOTIFY_EVT:
     case ESP_AVRC_CT_PASSTHROUGH_RSP_EVT: {
         bt_app_work_dispatch(bt_av_hdl_avrc_evt, event, param, sizeof(esp_avrc_ct_cb_param_t), NULL);
         break;
     }
+    case ESP_AVRC_CT_METADATA_RSP_EVT: {
+        bt_app_work_dispatch(bt_av_hdl_avrc_evt, event, param, sizeof(esp_avrc_ct_cb_param_t), NULL);
+        break;
+    }
     default:
-        ESP_LOGE(BT_AV_TAG, "avrc invalid cb event: %d", event);
+        ESP_LOGE(BT_AV_TAG, "avrc invalid avrc event: %d", event);
         break;
     }
 }
@@ -166,6 +223,22 @@ static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
     }
 }
 
+void bt_av_notify_evt_handler(uint8_t event_id, esp_avrc_rn_param_t event_parameter){
+    switch (event_id) {
+        case ESP_AVRC_RN_TRACK_CHANGE:
+            ESP_LOGE(BT_AV_TAG, "ESP_AVRC_RN_TRACK_CHANGE %d",event_id);
+            bt_av_new_track();
+            break;
+        case ESP_AVRC_RN_PLAY_STATUS_CHANGE:
+            ESP_LOGE(BT_AV_TAG, "ESP_AVRC_RN_PLAYBACK_CHANGE %d",event_id);
+            bt_av_new_track();
+            break;
+        default:
+            ESP_LOGE(BT_AV_TAG, "unhandled evt %d", event_id);
+            break;
+    }
+}
+
 static void bt_av_hdl_avrc_evt(uint16_t event, void *p_param)
 {
     ESP_LOGD(BT_AV_TAG, "%s evt %d", __func__, event);
@@ -177,9 +250,23 @@ static void bt_av_hdl_avrc_evt(uint16_t event, void *p_param)
                            rc->conn_stat.connected, bda[0], bda[1], bda[2], bda[3], bda[4], bda[5]);
 
         if (rc->conn_stat.connected == 1)
+        {
             bt_avrc_play();
+            bt_av_new_track();
+        }
         break;
     }
+    case ESP_AVRC_CT_METADATA_RSP_EVT: {
+            app_alloc_meta_buffer(p_param);
+            update_track_metadata_string();
+            break;
+    }
+    case ESP_AVRC_CT_CHANGE_NOTIFY_EVT: {
+            ESP_LOGE(BT_AV_TAG, "%s CHANGE_NOTIFY %d", __func__, event);
+            //ESP_LOGE(BT_AV_TAG, "AVRC event notification: %d, param: %d", rc->change_ntf.event_id, rc->change_ntf.event_parameter);
+            bt_av_notify_evt_handler(rc->change_ntf.event_id, rc->change_ntf.event_parameter);
+            break;
+        }
     case ESP_AVRC_CT_PASSTHROUGH_RSP_EVT: {
         ESP_LOGI(BT_AV_TAG, "avrc passthrough rsp: key_code 0x%x, key_state %d", rc->psth_rsp.key_code, rc->psth_rsp.key_state);
         break;
