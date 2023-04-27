@@ -22,7 +22,7 @@
 #include "player_app.h"
 
 #define BT_AV_TAG               "BT_AV"
-#define MAX_AUTCONNECT_COUNT 100
+#define MAX_AUTCONNECT_COUNT 6000
 
 /**
  * @brief     callback function for A2DP sink

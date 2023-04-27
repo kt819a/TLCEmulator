@@ -38,8 +38,8 @@ bool autoConnectIsAvaliable;
 esp_bd_addr_t last_connection = {0,0,0,0,0,0};
 const char* last_bda_nvs_name = "src_bda";
 
-char track_artist[80];
-char track_title[80];
+char track_artist[200];
+char track_title[200];
 
 /* a2dp event handler */
 static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param);
@@ -56,12 +56,12 @@ void clear_track_metadata_string()
 }
 void update_track_metadata_string()
 {
-    char displayText[200];
-    strcpy(displayText,track_artist);
-    strcat(displayText," - ");
-    strcat(displayText,track_title);
-    ESP_LOGI(BT_AV_TAG, "Text: %s", displayText);
-    updateDisplayText(displayText);
+    char tempText[400];
+    strcpy(tempText,track_artist);
+    strcat(tempText," - ");
+    strcat(tempText,track_title);
+    ESP_LOGI(BT_AV_TAG, "Text: %s", tempText);
+    updateDisplayText(tempText);
 }
 
 static uint32_t m_pkt_cnt = 0;
@@ -313,9 +313,8 @@ void get_last_connection(){
 void set_last_connection(esp_bd_addr_t bda){
     //same value, nothing to store
     ESP_LOGE(BT_AV_TAG, "Save BDA to NVS");
-    ESP_LOGD(BT_AV_TAG, "no change!");
     if ( memcmp(bda, last_connection, ESP_BD_ADDR_LEN) == 0 ) {
-        ESP_LOGD(BT_AV_TAG, "no change!");
+        ESP_LOGE(BT_AV_TAG, "no change!");
         return; 
     }
     nvs_handle my_handle;

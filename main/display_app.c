@@ -1,11 +1,12 @@
 #include "display_app.h"
 
+SemaphoreHandle_t xDisplayTextUpdateMutex;
 SemaphoreHandle_t xDisplayUpdateSemaphore;
 SemaphoreHandle_t xDisplayDisableUpdateMutex;
 QueueHandle_t xDisplayGpioInterputQueue;
 int i2c_master_port = 0;
 char  defaultText[] = "BLUETOOTH";
-char displayText[200];
+char displayText[400];
 uint8_t currentPosition = 0;
 
 static void IRAM_ATTR gpio_interrupt_handler(void *args)
@@ -96,7 +97,7 @@ void transliteration(char *dst, char* src)
                 dst[pos] = 'O';
                 pos++;
             } break;
-            case 1259:
+            case 1105:
             {
                 dst[pos] = 'Y';
                 pos++;
@@ -403,11 +404,13 @@ void transliteration(char *dst, char* src)
 
 void updateDisplayText(char *msg)
 {
+    xSemaphoreTake(xDisplayTextUpdateMutex, 50 / portTICK_PERIOD_MS);
     ESP_LOGI("DISPLAY:", "Change display text: %s", msg);
     transliteration(displayText,msg);
     strcat(displayText, "  ");
     ESP_LOGI("DISPLAY:", "Change display text: %s", displayText);
     currentPosition = 0;
+    xSemaphoreGive(xDisplayTextUpdateMutex);
 }
 
 void enableDisplayGPIOInterrupt()
@@ -556,6 +559,7 @@ static void i2cSenderTask(void *arg)
     {
         xSemaphoreTake(xDisplayUpdateSemaphore, 777 / portTICK_PERIOD_MS);
         xSemaphoreTake(xDisplayDisableUpdateMutex, (TickType_t) portMAX_DELAY);
+        xSemaphoreTake(xDisplayTextUpdateMutex, 50 / portTICK_PERIOD_MS);
         disableDisplayGPIOInterrupt();
 
         if (strlen(displayText) > 8)
@@ -577,8 +581,9 @@ static void i2cSenderTask(void *arg)
         ESP_LOGI("DISPLAY:", "Sender tick : %s", msgToSend);
         i2c_sendTextToDiasplay((uint8_t *)msgToSend);
 
-        xSemaphoreGive(xDisplayDisableUpdateMutex);
         enableDisplayGPIOInterrupt();
+        xSemaphoreGive(xDisplayDisableUpdateMutex);
+        xSemaphoreGive(xDisplayTextUpdateMutex);
     }
 }
 
@@ -663,6 +668,7 @@ void displayAppInit(void)
 
     xDisplayUpdateSemaphore = xSemaphoreCreateBinary();
     xDisplayDisableUpdateMutex = xSemaphoreCreateBinary();
+    xDisplayTextUpdateMutex = xSemaphoreCreateBinary();
 
     xSemaphoreGive(xDisplayDisableUpdateMutex);
 
